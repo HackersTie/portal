@@ -90,6 +90,8 @@
             measurementId: "G-FM007Q1897"
         };
 
+        // This ID is the key to your "Shared Room". 
+        // As long as this ID is the same, all devices will sync together.
         const appId = 'sarvartha-portal-v1';
 
         const initFirebase = async () => {
@@ -154,12 +156,14 @@
                 initFirebase().then(services => setFb(services));
             }, []);
 
+            // Data Persistence Logic - Updated to use Public Data path for cross-device sync
             useEffect(() => {
                 if (!isCloudEnabled || !fb || !user) {
                     setLinks(JSON.parse(localStorage.getItem('portal_links') || '[]'));
                     return;
                 }
-                const q = fb.collection(fb.db, 'artifacts', appId, 'users', user.uid, 'links');
+                // RULE 1: Use Public path so different anonymous IDs can access the same list
+                const q = fb.collection(fb.db, 'artifacts', appId, 'public', 'data', 'links');
                 const unsub = fb.onSnapshot(q, (snap) => {
                     setLinks(snap.docs.map(d => ({ id: d.id, ...d.data() })));
                 }, (err) => {
@@ -215,7 +219,8 @@
                 const insight = await callGemini(`Analyze: ${link.title} (${link.url}). 1-sentence insight.`, "Inspiring mentor.");
                 if (insight) {
                     if (isCloudEnabled && fb && user) {
-                        await fb.updateDoc(fb.doc(fb.db, 'artifacts', appId, 'users', user.uid, 'links', link.id), { insight });
+                        const docRef = fb.doc(fb.db, 'artifacts', appId, 'public', 'data', 'links', link.id);
+                        await fb.updateDoc(docRef, { insight });
                     } else {
                         const updated = links.map(l => l.id === link.id ? { ...l, insight } : l);
                         setLinks(updated);
@@ -229,7 +234,8 @@
                 e.preventDefault();
                 const linkData = { ...newLink, id: Date.now().toString(), createdAt: new Date().toISOString() };
                 if (isCloudEnabled && fb && user) {
-                    await fb.setDoc(fb.doc(fb.db, 'artifacts', appId, 'users', user.uid, 'links', linkData.id), linkData);
+                    const docRef = fb.doc(fb.db, 'artifacts', appId, 'public', 'data', 'links', linkData.id);
+                    await fb.setDoc(docRef, linkData);
                 } else {
                     const updated = [...links, linkData];
                     setLinks(updated);
@@ -240,8 +246,10 @@
             };
 
             const removeLink = async (id) => {
-                if (isCloudEnabled && fb && user) await fb.deleteDoc(fb.doc(fb.db, 'artifacts', appId, 'users', user.uid, 'links', id));
-                else {
+                if (isCloudEnabled && fb && user) {
+                    const docRef = fb.doc(fb.db, 'artifacts', appId, 'public', 'data', 'links', id);
+                    await fb.deleteDoc(docRef);
+                } else {
                     const updated = links.filter(l => l.id !== id);
                     setLinks(updated);
                     localStorage.setItem('portal_links', JSON.stringify(updated));
