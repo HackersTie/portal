@@ -1,456 +1,1241 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sarvartha's Redirection Portal</title>
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Student Planner</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <style>
+    :root{
+      --bg:#111111;
+      --panel:#191919;
+      --text:#f5f5f0;
+      --muted:#9b9b95;
+      --sage:#d7e0d0;
+      --sage-soft:#9fb398;
+      --danger:#d98b7f;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'DM Sans',sans-serif;color:var(--text);background:var(--bg)}
+    .app-shell{width:100%;min-height:calc(100 * min(var(--vh, 1vh), 1vh));background:#111}
     
-    <!-- FAVICON (The Tab Logo) -->
-    <link id="favicon" rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>✨</text></svg>">
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- React & Babel -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    .soft-grid{
+      background-image:
+        linear-gradient(rgba(255,255,255,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px);
+      background-size:34px 34px;
+    }
     
-    <!-- Load Firebase as Modules and expose to Window -->
-    <script type="module">
-        import { initializeApp, getApps, getApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import { getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, updateDoc, query } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
-        import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+    .glass-panel{
+      background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.02));
+      border:1px solid rgba(255,255,255,.08);
+      box-shadow:0 18px 48px rgba(0,0,0,.18);
+    }
+    .focus-ring:focus-visible{outline:3px solid rgba(215,224,208,.8);outline-offset:3px}
+    
+    /* Navigation Active State - Clean Sage fill that works on Desktop and Mobile */
+    .nav-item.active { 
+        background-color: #d7e0d0 !important; 
+    }
+    .nav-item.active,
+    .nav-item.active .canva-text,
+    .nav-item.active span,
+    .nav-item.active button,
+    .nav-item.active div {
+        color: #111 !important;
+    }
+    .nav-item.active svg { 
+        stroke: #111 !important; 
+        fill: none !important; 
+    }
+    
+    .view-panel{display:none}
+    .view-panel.active{display:block}
+    .modal-backdrop{background:rgba(0,0,0,.68);backdrop-filter:blur(6px)}
+    .fade-in{animation:fadeIn .25s ease both}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    
+    .record-card{transition:.2s ease}
+    .record-card:hover{transform:translateY(-2px);background:#202020;border-color:rgba(215,224,208,.28)}
+    .course-card{transition:.2s ease;position:relative}
+    .course-card:hover{transform:translateY(-2px);border-color:rgba(215,224,208,.28)}
+    
+    .progress-ring{
+      width:62px;height:62px;border-radius:999px;
+      background:conic-gradient(#d7e0d0 var(--progress), #2a2a2a 0);
+      display:grid;place-items:center;position:relative
+    }
+    .progress-ring::after{
+      content:"";position:absolute;width:46px;height:46px;background:#1a1a1a;border-radius:999px
+    }
+    .progress-ring span{position:relative;z-index:1;font-size:12px;font-weight:700}
+    .toast{animation:fadeIn .2s ease both}
+    
+    /* Pixel Art Quality Fix - keeps illustrations sharp */
+    .course-img, .detail-img, .canva-image {
+      image-rendering: pixelated !important;
+      image-rendering: crisp-edges !important;
+      image-rendering: -moz-crisp-edges !important;
+      image-rendering: -webkit-optimize-contrast !important;
+      object-fit: cover !important;
+    }
+  </style>
+  <script src="/_sdk/resizing_sdk.js" type="text/javascript"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+ </head>
+ 
+ <body data-template-id="__page-root">
+  <div class="app-shell soft-grid">
+   
+   <aside class="sidebar-desktop fixed left-0 top-0 bottom-0 w-[248px] border-r border-white/10 bg-[#141414] px-4 py-5 hidden lg:flex flex-col z-40">
+    <div class="flex items-center gap-3 px-2 mb-8">
+     <div class="w-9 h-9 rounded-full bg-[#d7e0d0] flex items-center justify-center text-[#111]"><i data-lucide="book-open" class="w-4 h-4"></i></div>
+     <div>
+      <h1 data-template-id="brand-name" class="canva-text font-bold tracking-[-0.03em]">Student OS</h1>
+      <p data-template-id="brand-subtitle" class="canva-text text-xs text-[#8f8f89]">Dashboard</p>
+     </div>
+    </div>
+    
+    <nav class="space-y-1" aria-label="Primary">
+     <button type="button" data-view="today" class="nav-item active focus-ring w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-left transition"><i data-lucide="layout-dashboard" class="w-4 h-4"></i><span class="canva-text">Today</span></button> 
+     <button type="button" data-view="courses" class="nav-item focus-ring w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-left text-[#c9c9c2] hover:bg-white/5 transition"><i data-lucide="graduation-cap" class="w-4 h-4"></i><span class="canva-text">Courses</span></button> 
+     <button type="button" data-view="tracker" class="nav-item focus-ring w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-left text-[#c9c9c2] hover:bg-white/5 transition"><i data-lucide="table" class="w-4 h-4"></i><span class="canva-text">Tracker</span></button> 
+     <button type="button" data-view="notes" class="nav-item focus-ring w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-left text-[#c9c9c2] hover:bg-white/5 transition"><i data-lucide="timer" class="w-4 h-4"></i><span class="canva-text">Study</span></button> 
+     <button type="button" data-view="habits" class="nav-item focus-ring w-full flex items-center gap-3 px-3 py-3 rounded-xl text-sm font-semibold text-left text-[#c9c9c2] hover:bg-white/5 transition"><i data-lucide="sprout" class="w-4 h-4"></i><span class="canva-text">Habits</span></button>
+    </nav>
+    
+    <div data-template-id="quote-card" class="canva-card mt-auto rounded-2xl bg-[#1d241e] p-4 border border-white/10">
+     <div class="w-8 h-8 rounded-full bg-[#d7e0d0] flex items-center justify-center text-[#111] mb-4"><i data-lucide="sparkles" class="w-4 h-4"></i></div>
+     <p data-template-id="quote-text" class="canva-text text-sm leading-5 text-[#ebeee8]">"Success is the sum of small efforts, repeated day in and day out."</p>
+     <p data-template-id="quote-author" class="canva-text mt-3 text-xs text-[#9ca998]">Robert Collier</p>
+    </div>
+   </aside>
+   
+   <main class="main-area min-h-screen pl-0 lg:pl-[248px] pb-24 lg:pb-0">
+    <header class="border-b border-white/10 bg-[#111]/90 backdrop-blur-md sticky top-0 z-30">
+     <div class="px-5 md:px-8 py-4 md:py-5 flex flex-row items-start md:items-center justify-between gap-4">
+      <div>
+       <p data-template-id="top-eyebrow" class="canva-text uppercase tracking-[0.18em] text-[#9fb398] text-[10px] md:text-[11px] font-bold mb-1 md:mb-2">Workspace</p>
+       <h2 data-template-id="page-title" class="canva-text font-extrabold tracking-[-0.05em] leading-tight text-2xl md:text-3xl"></h2>
+       <p id="today-date" class="text-xs md:text-sm text-[#9b9b95] mt-1 md:mt-2"></p>
+      </div>
+      <!-- Responsive FAB/Button -->
+      <button id="open-modal" type="button" data-template-id="add-button" class="canva-button focus-ring inline-flex items-center justify-center gap-2 rounded-full w-12 h-12 md:w-auto md:h-auto md:px-5 md:py-3 bg-[#d7e0d0] text-[#111] font-bold text-sm hover:bg-white transition flex-shrink-0"> 
+       <i data-lucide="plus" class="w-6 h-6 md:w-4 md:h-4"></i>
+       <span class="hidden md:inline">New Item</span>
+      </button>
+     </div>
+    </header>
+    
+    <div class="px-4 md:px-8 py-6 md:py-8">
+     <section id="view-today" class="view-panel active fade-in">
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-6">
+       <article data-template-id="stat-card-1" class="canva-card glass-panel rounded-2xl p-4 md:p-5">
+        <p data-template-id="stat-label-1" class="canva-text text-xs md:text-sm text-[#a4a49d]">Pending Tasks</p>
+        <p id="stat-tasks" class="text-2xl md:text-3xl font-bold mt-3 md:mt-5">0</p>
+       </article>
+       <article data-template-id="stat-card-2" class="canva-card glass-panel rounded-2xl p-4 md:p-5">
+        <p data-template-id="stat-label-2" class="canva-text text-xs md:text-sm text-[#a4a49d]">Completed</p>
+        <p id="stat-complete" class="text-2xl md:text-3xl font-bold mt-3 md:mt-5">0</p>
+       </article>
+       <article data-template-id="stat-card-3" class="canva-card glass-panel rounded-2xl p-4 md:p-5">
+        <p data-template-id="stat-label-3" class="canva-text text-xs md:text-sm text-[#a4a49d]">Active Habits</p>
+        <p id="stat-budget" class="text-2xl md:text-3xl font-bold mt-3 md:mt-5">0</p>
+       </article>
+       <article data-template-id="stat-card-4" class="canva-card glass-panel rounded-2xl p-4 md:p-5">
+        <p data-template-id="stat-label-4" class="canva-text text-xs md:text-sm text-[#a4a49d]">Active Courses</p>
+        <p id="stat-courses" class="text-2xl md:text-3xl font-bold mt-3 md:mt-5">0</p>
+       </article>
+      </div>
+      
+      <div class="grid lg:grid-cols-[1.05fr_.95fr] gap-6">
+       <section data-template-id="today-card" class="canva-card glass-panel rounded-3xl p-5 md:p-6">
+        <p data-template-id="section-kicker-1" class="canva-text uppercase tracking-[0.16em] text-[#9fb398] text-[11px] font-bold mb-2">To Do List</p>
+        <h3 data-template-id="section-title-1" class="canva-text font-bold tracking-[-0.04em] mb-5 text-xl">Today's Focus</h3>
+        <div id="today-list" class="space-y-3"></div>
+        <div id="today-empty" class="rounded-2xl border border-dashed border-white/10 p-7 text-center">
+         <p data-template-id="empty-today-title" class="canva-text font-semibold">You're all caught up!</p>
+         <p data-template-id="empty-today-copy" class="canva-text text-sm text-[#8f8f89] mt-1">Enjoy your free time.</p>
+        </div>
+       </section>
+       
+       <div class="space-y-6">
+        <section data-template-id="course-preview-card" class="canva-card glass-panel rounded-3xl p-5">
+         <h3 data-template-id="course-preview-title" class="canva-text font-bold mb-4">Course Progress</h3>
+         <div id="course-preview-list" class="space-y-3"></div>
+         <p id="course-preview-empty" data-template-id="course-preview-empty" class="canva-text text-sm text-[#8f8f89]">No courses added yet.</p>
+        </section>
+        <section data-template-id="deadline-card" class="canva-card glass-panel rounded-3xl p-5">
+         <h3 data-template-id="deadline-title" class="canva-text font-bold mb-4">Upcoming Deadlines</h3>
+         <div id="deadline-list" class="space-y-3"></div>
+         <p id="deadline-empty" data-template-id="deadline-empty" class="canva-text text-sm text-[#8f8f89]">No immediate deadlines.</p>
+        </section>
+        <section data-template-id="habit-card" class="canva-card glass-panel rounded-3xl p-5">
+         <h3 data-template-id="habit-title" class="canva-text font-bold mb-4">Daily Habits</h3>
+         <div id="habit-preview-list" class="space-y-3"></div>
+         <p id="habit-empty" data-template-id="habit-empty" class="canva-text text-sm text-[#8f8f89]">Start building a streak today.</p>
+        </section>
+       </div>
+      </div>
+     </section>
+     
+     <section id="view-courses" class="view-panel fade-in">
+      <div id="course-overview">
+       <div class="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+        <div>
+         <p data-template-id="courses-kicker" class="canva-text uppercase tracking-[0.16em] text-[#9fb398] text-[11px] font-bold mb-2">Curriculum</p>
+         <h3 data-template-id="courses-title" class="canva-text font-bold tracking-[-0.04em] text-2xl">My Courses</h3>
+         <p data-template-id="courses-subtitle" class="canva-text text-sm text-[#9b9b95] mt-2">Manage your classes and specific syllabus goals.</p>
+        </div>
+        <div class="rounded-2xl bg-white/[0.03] border border-white/10 px-4 py-3 w-full md:w-auto md:min-w-[190px]">
+         <p data-template-id="overall-progress-label" class="canva-text text-[11px] uppercase tracking-[0.14em] text-[#9fb398] font-bold">Total Completion</p>
+         <div class="flex items-end justify-between mt-2">
+          <p id="overall-progress-value" class="text-2xl font-bold">0%</p>
+          <p id="overall-progress-meta" class="text-xs text-[#8f8f89]">0 actions</p>
+         </div>
+        </div>
+       </div>
+       <div id="courses-list" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+       <div id="courses-empty" class="rounded-3xl border border-dashed border-white/10 p-10 text-center">
+        <p data-template-id="courses-empty-title" class="canva-text font-semibold">Ready for a new semester?</p>
+        <p data-template-id="courses-empty-copy" class="canva-text text-sm text-[#8f8f89] mt-1">Add your first course to get started.</p>
+       </div>
+      </div>
+      
+      <div id="course-detail" class="hidden">
+       <button id="back-to-courses" type="button" class="focus-ring inline-flex items-center gap-2 text-sm text-[#bfcab9] mb-5 hover:text-white transition"> <i data-lucide="arrow-left" class="w-4 h-4"></i><span data-template-id="back-to-courses" class="canva-text">Back to courses</span> </button>
+       <section data-template-id="course-detail-card" class="canva-card glass-panel rounded-3xl overflow-hidden mb-5">
+        <div id="detail-course-image-wrap" class="w-full aspect-video md:aspect-[21/9] overflow-hidden bg-[#0f0f0f] flex items-center justify-center">
+         <img src="" class="detail-img w-full h-full object-cover object-center" loading="lazy">
+        </div>
+        <div class="p-5 md:p-6">
+         <div class="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-5">
+          <div class="flex-1 min-w-0">
+           <p data-template-id="course-detail-kicker" class="canva-text uppercase tracking-[0.16em] text-[#9fb398] text-[11px] font-bold mb-2">Syllabus Overview</p>
+           <h3 id="detail-course-title" class="font-bold tracking-[-0.05em] text-3xl md:text-4xl break-words"></h3>
+           <p id="detail-course-description" class="text-sm text-[#9b9b95] mt-3 leading-6"></p>
+          </div>
+          <div class="flex items-center gap-3 shrink-0">
+           <div id="detail-progress-ring" class="progress-ring" style="--progress:0%"><span id="detail-progress-percent">0%</span></div>
+           <div class="relative">
+            <button id="course-menu-btn" type="button" class="focus-ring w-9 h-9 rounded-full bg-white/5 flex items-center justify-center text-[#d7e0d0] hover:bg-white/10"><i data-lucide="more-vertical" class="w-4 h-4"></i></button>
+            <div id="course-menu" class="hidden absolute right-0 top-full mt-2 bg-[#0f0f0f] border border-white/15 rounded-xl shadow-lg overflow-hidden z-40 min-w-[180px]">
+             <button type="button" id="course-edit-btn" class="w-full px-4 py-3 text-left text-sm hover:bg-white/10 flex items-center gap-2"><i data-lucide="edit-2" class="w-4 h-4"></i><span>Edit course</span></button> 
+             <button type="button" id="course-delete-btn" class="w-full px-4 py-3 text-left text-sm hover:bg-white/10 flex items-center gap-2 text-[#d98b7f]"><i data-lucide="trash-2" class="w-4 h-4"></i><span data-template-id="course-delete-label" class="canva-text">Delete course</span></button>
+            </div>
+           </div>
+          </div>
+         </div>
+         <div id="course-delete-confirm" class="rounded-2xl border border-[#d98b7f]/30 bg-[#2a1715] p-4 hidden">
+          <p class="text-sm text-[#f0c0b8] mb-3">Delete this course and all of its actions?</p>
+          <div class="flex gap-2">
+           <button id="confirm-course-delete" type="button" class="focus-ring rounded-full px-4 py-2 bg-[#d98b7f] text-[#111] text-sm font-bold">Delete</button> 
+           <button id="cancel-course-delete" type="button" class="focus-ring rounded-full px-4 py-2 bg-white/10 text-sm font-semibold">Cancel</button>
+          </div>
+         </div>
+        </div>
+       </section>
+       
+       <section data-template-id="course-actions-card" class="canva-card glass-panel rounded-3xl p-5 md:p-6">
+        <div class="flex items-center justify-between mb-5">
+         <div>
+          <p data-template-id="actions-kicker" class="canva-text uppercase tracking-[0.16em] text-[#9fb398] text-[11px] font-bold mb-2">Milestones</p>
+          <h4 data-template-id="actions-title" class="canva-text font-bold text-lg">Action Items</h4>
+         </div>
+         <button id="open-action-modal" type="button" data-template-id="add-action-button" class="canva-button focus-ring inline-flex items-center justify-center gap-2 rounded-full px-4 py-2.5 bg-[#d7e0d0] text-[#111] font-bold text-sm"><i data-lucide="plus" class="w-4 h-4"></i> <span class="hidden sm:inline">Add Action</span></button>
+        </div>
+        <div id="course-actions-list" class="space-y-3"></div>
+        <div id="course-actions-empty" class="rounded-2xl border border-dashed border-white/10 p-7 text-center">
+         <p data-template-id="course-actions-empty-title" class="canva-text font-semibold">No actions yet</p>
+         <p data-template-id="course-actions-empty-copy" class="canva-text text-sm text-[#8f8f89] mt-1">Break your course into smaller pieces.</p>
+        </div>
+       </section>
+      </div>
+     </section>
+     
+     <section id="view-tracker" class="view-panel fade-in">
+      <div class="flex flex-wrap gap-2 mb-6">
+       <button type="button" class="tracker-tab active focus-ring px-4 py-2 rounded-lg text-sm font-semibold text-[#d7e0d0] hover:bg-white/10 transition" data-tracker="assignments-card"><i data-lucide="pen-line" class="w-4 h-4 inline mr-2"></i>Assignments</button> 
+       <button type="button" class="tracker-tab focus-ring px-4 py-2 rounded-lg text-sm font-semibold text-[#8f8f89] hover:bg-white/10 transition" data-tracker="exams-card"><i data-lucide="file-text" class="w-4 h-4 inline mr-2"></i>Exams</button>
+      </div>
+      <div class="space-y-8">
+       <section data-template-id="assignments-card" class="canva-card glass-panel rounded-3xl overflow-hidden">
+        <!-- Aspect ratio fix + object-position for Assignment Banner -->
+        <img data-template-id="tracker-assignments-banner" src="https://i.ibb.co/Kpz7NDtW/a4.png" class="canva-image w-full aspect-video md:aspect-[4/1] object-cover rounded-t-2xl" style="object-position: center 72% !important;">
+        <div class="p-4 md:p-6">
+         <div class="flex items-center justify-between mb-5">
+          <div>
+           <p data-template-id="assignments-kicker" class="canva-text uppercase tracking-[0.16em] text-[#9fb398] text-[10px] md:text-[11px] font-bold mb-1 md:mb-2">Projects & Homework</p>
+           <h3 data-template-id="assignments-title" class="canva-text font-bold tracking-[-0.04em] text-lg md:text-xl">Assignment Tracker</h3>
+          </div><button id="add-assignment-btn" type="button" data-template-id="add-assignment-button" class="canva-button focus-ring inline-flex items-center justify-center gap-2 rounded-full px-3 md:px-4 py-2 md:py-2.5 bg-[#d7e0d0] text-[#111] font-bold text-xs md:text-sm"><i data-lucide="plus" class="w-4 h-4"></i> Add Entry</button>
+         </div>
+         <div class="overflow-x-auto w-full max-w-[90vw] md:max-w-none pb-4">
+          <table class="w-full text-left text-sm border-collapse min-w-[700px]">
+           <thead>
+            <tr class="border-b border-white/10">
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Name</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Course</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Due Date</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Time Left</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Type</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Status</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider"></th>
+            </tr>
+           </thead>
+           <tbody id="assignment-list" class="divide-y divide-white/5"></tbody>
+          </table>
+         </div>
+         <div id="assignments-empty" class="rounded-2xl border border-dashed border-white/10 p-7 text-center hidden">
+          <p data-template-id="assignments-empty-title" class="canva-text font-semibold">No upcoming assignments</p>
+          <p data-template-id="assignments-empty-copy" class="canva-text text-sm text-[#8f8f89] mt-1">Check your syllabus to stay ahead.</p>
+         </div>
+        </div>
+       </section>
+       
+       <section data-template-id="exams-card" class="canva-card glass-panel rounded-3xl overflow-hidden">
+        <!-- Aspect ratio fix for Exam Banner -->
+        <img data-template-id="tracker-exams-banner" src="https://i.ibb.co/21YStsZ1/g4.png" class="canva-image w-full aspect-video md:aspect-[4/1] object-cover rounded-t-2xl">
+        <div class="p-4 md:p-6">
+         <div class="flex items-center justify-between mb-5">
+          <div>
+           <p data-template-id="exams-kicker" class="canva-text uppercase tracking-[0.16em] text-[#9fb398] text-[10px] md:text-[11px] font-bold mb-1 md:mb-2">Tests & Quizzes</p>
+           <h3 data-template-id="exams-title" class="canva-text font-bold tracking-[-0.04em] text-lg md:text-xl">Exam Tracker</h3>
+          </div><button id="add-exam-btn" type="button" data-template-id="add-exam-button" class="canva-button focus-ring inline-flex items-center justify-center gap-2 rounded-full px-3 md:px-4 py-2 md:py-2.5 bg-[#d7e0d0] text-[#111] font-bold text-xs md:text-sm"><i data-lucide="plus" class="w-4 h-4"></i> Add Exam</button>
+         </div>
+         <div class="overflow-x-auto w-full max-w-[90vw] md:max-w-none pb-4">
+          <table class="w-full text-left text-sm border-collapse min-w-[700px]">
+           <thead>
+            <tr class="border-b border-white/10">
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Name</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Course</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Exam Date</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider">Time Left</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider text-right">Action</th>
+             <th class="px-4 py-3 font-semibold text-[#9fb398] text-xs uppercase tracking-wider"></th>
+            </tr>
+           </thead>
+           <tbody id="exam-list" class="divide-y divide-white/5"></tbody>
+          </table>
+         </div>
+         <div id="exams-empty" class="rounded-2xl border border-dashed border-white/10 p-7 text-center hidden">
+          <p data-template-id="exams-empty-title" class="canva-text font-semibold">No exams coming up</p>
+          <p data-template-id="exams-empty-copy" class="canva-text text-sm text-[#8f8f89] mt-1">Breathe easy!</p>
+         </div>
+        </div>
+       </section>
+      </div>
+     </section>
+     
+     <section id="view-notes" class="view-panel fade-in">
+      <div class="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto mt-4">
+       <!-- Pomodoro Timer -->
+       <article id="pomodoro-container" class="rounded-[2.5rem] p-6 md:p-12 text-center border border-white/10 bg-gradient-to-br from-[#1a1c1a] to-[#111] shadow-2xl relative overflow-hidden">
+        <div class="flex flex-wrap justify-center gap-1 items-center bg-white/5 rounded-[2rem] p-1.5 w-full max-w-sm mx-auto mb-8 md:mb-10 border border-white/5">
+         <button class="pomo-tab active px-4 md:px-6 py-2.5 rounded-[1.5rem] text-xs md:text-sm font-bold bg-[#d7e0d0] text-[#111] shadow-sm flex-1 whitespace-nowrap transition-colors" data-time="25">Pomodoro</button> 
+         <button class="pomo-tab px-4 md:px-6 py-2.5 rounded-[1.5rem] text-xs md:text-sm font-semibold text-[#8f8f89] hover:text-[#d7e0d0] flex-1 whitespace-nowrap transition-colors" data-time="5">Short Break</button> 
+         <button class="pomo-tab px-4 md:px-6 py-2.5 rounded-[1.5rem] text-xs md:text-sm font-semibold text-[#8f8f89] hover:text-[#d7e0d0] flex-1 whitespace-nowrap transition-colors" data-time="15">Long Break</button>
+        </div>
+        <h2 id="timer-display" class="text-[5rem] sm:text-[6rem] md:text-[8rem] font-bold tracking-tighter text-white mb-8 md:mb-10 tabular-nums leading-none">25:00</h2>
+        <div class="flex justify-center items-center gap-4">
+         <button id="timer-toggle" class="px-8 md:px-10 py-3 md:py-4 rounded-full bg-[#d7e0d0] text-[#111] font-bold text-base md:text-lg flex items-center gap-2 hover:bg-white transition-all"> <i data-lucide="play" id="timer-icon"></i> <span id="toggle-text">Start</span> </button> 
+         <button id="timer-reset" class="w-12 h-12 md:w-14 md:h-14 rounded-full border-2 border-white/10 flex items-center justify-center text-[#8f8f89] hover:border-white/30 transition-all"> <i data-lucide="rotate-ccw"></i> </button>
+        </div>
+       </article>
 
-        window.FirebaseBridge = {
-            initializeApp, getApps, getApp, getFirestore, collection, doc, setDoc, onSnapshot, deleteDoc, updateDoc, query,
-            getAuth, signInAnonymously, onAuthStateChanged
-        };
-    </script>
+       <!-- Spotify Playlist -->
+       <div class="rounded-[2.5rem] p-4 border border-white/10 bg-[#111] shadow-2xl flex items-center justify-center overflow-hidden h-[380px] md:h-auto">
+        <iframe data-testid="embed-iframe" style="border-radius:12px" src="https://open.spotify.com/embed/playlist/37i9dQZF1DX8Uebhn9wzrS?utm_source=generator&si=2a141b09a62c42d6" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+       </div>
+      </div>
+     </section>
+     
+     <section id="view-habits" class="view-panel fade-in">
+      <div class="mb-5 flex items-center justify-between">
+       <div>
+        <p data-template-id="habits-kicker" class="canva-text uppercase tracking-[0.16em] text-[#9fb398] text-[11px] font-bold mb-2">Routines</p>
+        <h3 data-template-id="habits-title" class="canva-text font-bold text-2xl">Habits & Tracking</h3>
+       </div>
+       <button type="button" onclick="document.getElementById('entry-type').value='habit'; document.getElementById('entry-type').dispatchEvent(new Event('change')); document.getElementById('open-modal').click();" class="canva-button focus-ring inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 bg-[#d7e0d0] text-[#111] font-bold text-sm"><i data-lucide="plus" class="w-4 h-4"></i> Add Habit</button>
+      </div>
+      <div id="habits-list" class="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"></div>
+      <div id="habits-empty" class="rounded-3xl border border-dashed border-white/10 p-10 text-center">
+       <p data-template-id="habits-empty-title" class="canva-text font-semibold">Build positive routines</p>
+       <p data-template-id="habits-empty-copy" class="canva-text text-sm text-[#8f8f89] mt-1">Add a habit to track your daily progress.</p>
+      </div>
+     </section>
+    </div>
+   </main>
+   
+   <nav class="lg:hidden fixed bottom-0 left-0 right-0 bg-[#111]/95 backdrop-blur-xl border-t border-white/10 flex items-center justify-around px-2 py-2 z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.3)]">
+       <button type="button" data-view="today" class="nav-item active focus-ring flex flex-col items-center justify-center flex-1 max-w-[70px] h-14 rounded-2xl text-[#c9c9c2] transition gap-1">
+         <i data-lucide="layout-dashboard" class="w-[22px] h-[22px]"></i>
+         <span class="text-[10px] font-semibold tracking-wide">Today</span>
+       </button>
+       <button type="button" data-view="courses" class="nav-item focus-ring flex flex-col items-center justify-center flex-1 max-w-[70px] h-14 rounded-2xl text-[#c9c9c2] transition gap-1">
+         <i data-lucide="graduation-cap" class="w-[22px] h-[22px]"></i>
+         <span class="text-[10px] font-semibold tracking-wide">Courses</span>
+       </button>
+       <button type="button" data-view="tracker" class="nav-item focus-ring flex flex-col items-center justify-center flex-1 max-w-[70px] h-14 rounded-2xl text-[#c9c9c2] transition gap-1">
+         <i data-lucide="table" class="w-[22px] h-[22px]"></i>
+         <span class="text-[10px] font-semibold tracking-wide">Tracker</span>
+       </button>
+       <button type="button" data-view="notes" class="nav-item focus-ring flex flex-col items-center justify-center flex-1 max-w-[70px] h-14 rounded-2xl text-[#c9c9c2] transition gap-1">
+         <i data-lucide="timer" class="w-[22px] h-[22px]"></i>
+         <span class="text-[10px] font-semibold tracking-wide">Study</span>
+       </button>
+       <button type="button" data-view="habits" class="nav-item focus-ring flex flex-col items-center justify-center flex-1 max-w-[70px] h-14 rounded-2xl text-[#c9c9c2] transition gap-1">
+         <i data-lucide="sprout" class="w-[22px] h-[22px]"></i>
+         <span class="text-[10px] font-semibold tracking-wide">Habits</span>
+       </button>
+   </nav>
+  </div>
+  
+  <div id="modal" class="hidden fixed inset-0 z-[60] modal-backdrop items-center justify-center p-4">
+   <div data-template-id="modal-card" class="canva-card w-full max-w-xl rounded-[28px] bg-[#181818] border border-white/10 p-5 md:p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+    <div class="flex justify-between mb-5 sticky top-0 bg-[#181818] z-10 pt-2 pb-2">
+     <div>
+      <p data-template-id="modal-kicker" class="canva-text uppercase tracking-[0.16em] text-[#9fb398] text-[11px] font-bold mb-2">Create</p>
+      <h2 data-template-id="modal-title" class="canva-text font-bold text-xl">New Entry</h2>
+     </div><button id="close-modal" type="button" class="focus-ring w-9 h-9 rounded-full bg-white/5 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <form id="entry-form" class="space-y-4">
+     <div><label for="entry-type" data-template-id="type-label" class="canva-text block text-sm font-semibold mb-2">Type</label><select id="entry-type" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"><option value="task">Assignment/Task</option><option value="course">Course</option><option value="habit">Habit</option><option value="exam">Exam</option></select></div>
+     <div><label for="entry-title" data-template-id="title-label" class="canva-text block text-sm font-semibold mb-2">Title</label><input id="entry-title" type="text" required class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"></div>
+     <div id="description-field"><label for="entry-description" data-template-id="description-label" class="canva-text block text-sm font-semibold mb-2">Notes</label><textarea id="entry-description" rows="3" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white resize-none"></textarea></div>
+     <div id="due-field"><label for="entry-due" data-template-id="due-label" class="canva-text block text-sm font-semibold mb-2">Date</label><input id="entry-due" type="date" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"></div>
+     <div id="parent-course-field" class="hidden"><label for="entry-parent-course" class="canva-text block text-sm font-semibold mb-2">Course</label><select id="entry-parent-course" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"></select></div>
+     <div id="custom-type-field" class="hidden"><label for="entry-custom-type" class="canva-text block text-sm font-semibold mb-2">Assignment Type</label><input id="entry-custom-type" type="text" placeholder="e.g. Research Paper, Project" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"></div>
+     <div id="course-fields" class="hidden"><label for="entry-instructor" data-template-id="instructor-label" class="canva-text block text-sm font-semibold mb-2">Instructor</label><input id="entry-instructor" type="text" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"></div>
+     <div id="budget-fields" class="hidden grid grid-cols-2 gap-3">
+      <div><label for="entry-amount" data-template-id="amount-label" class="canva-text block text-sm font-semibold mb-2">Amount</label><input id="entry-amount" type="number" min="0" step="0.01" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"></div>
+      <div><label for="entry-category" data-template-id="category-label" class="canva-text block text-sm font-semibold mb-2">Category</label><input id="entry-category" type="text" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"></div>
+     </div>
+     <p id="form-message" class="text-sm text-[#d98b7f] hidden"></p>
+     <div class="flex justify-end gap-3 pt-2">
+      <button type="button" id="cancel-modal" data-template-id="cancel-button" class="canva-button focus-ring rounded-full px-5 py-3 bg-white/5 text-sm font-semibold">Cancel</button> <button type="submit" id="save-entry" data-template-id="save-button" class="canva-button focus-ring rounded-full px-5 py-3 bg-[#d7e0d0] text-[#111] text-sm font-bold">Save Entry</button>
+     </div>
+    </form>
+   </div>
+  </div>
+  
+  <div id="action-modal" class="hidden fixed inset-0 z-[60] modal-backdrop items-center justify-center p-4">
+   <div data-template-id="action-modal-card" class="canva-card w-full max-w-lg rounded-[28px] bg-[#181818] border border-white/10 p-5 md:p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
+    <div class="flex justify-between mb-5">
+     <div>
+      <p data-template-id="action-modal-kicker" class="canva-text uppercase tracking-[0.16em] text-[#9fb398] text-[11px] font-bold mb-2">Course Plan</p>
+      <h2 data-template-id="action-modal-title" class="canva-text font-bold text-xl">New Action Item</h2>
+     </div><button id="close-action-modal" type="button" class="focus-ring w-9 h-9 rounded-full bg-white/5 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <form id="action-form" class="space-y-4">
+     <div><label for="action-title" data-template-id="action-title-label" class="canva-text block text-sm font-semibold mb-2">Task</label><input id="action-title" type="text" required class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"></div>
+     <div><label for="action-description" data-template-id="action-description-label" class="canva-text block text-sm font-semibold mb-2">Details</label><textarea id="action-description" rows="3" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white resize-none"></textarea></div>
+     <div><label for="action-due" data-template-id="action-due-label" class="canva-text block text-sm font-semibold mb-2">Due Date</label><input id="action-due" type="date" class="canva-input focus-ring w-full rounded-xl bg-[#222] border border-white/10 px-4 py-3 text-sm text-white"></div>
+     <p id="action-form-message" class="text-sm text-[#d98b7f] hidden"></p>
+     <div class="flex justify-end gap-3 pt-2">
+      <button type="button" id="cancel-action-modal" data-template-id="action-cancel-button" class="canva-button focus-ring rounded-full px-5 py-3 bg-white/5 text-sm font-semibold">Cancel</button> <button type="submit" id="save-action" data-template-id="action-save-button" class="canva-button focus-ring rounded-full px-5 py-3 bg-[#d7e0d0] text-[#111] text-sm font-bold">Save</button>
+     </div>
+    </form>
+   </div>
+  </div>
+  
+  <template id="course-template">
+   <article data-template-id="course-card" class="canva-card course-card rounded-3xl bg-[#1a1a1a] border border-white/10 overflow-hidden cursor-pointer relative group flex flex-col h-full min-h-[320px]">
+    <div class="course-image-slot w-full aspect-video bg-[#0f0f0f] overflow-hidden flex-shrink-0">
+     <img src="" class="course-img w-full h-full object-cover object-center" loading="lazy">
+    </div>
+    <div class="relative z-10 p-5 flex flex-col flex-1">
+     <div class="flex justify-between gap-3">
+      <div class="min-w-0 flex-1">
+       <p data-template-id="course-card-kicker" class="canva-text text-[10px] uppercase tracking-[0.16em] font-bold text-[#9fb398]">Course</p>
+       <h4 data-template-id="course-card-title" class="canva-text mt-3 font-semibold text-lg line-clamp-2"></h4>
+       <p data-template-id="course-card-description" class="canva-text mt-2 text-sm text-[#9b9b95] leading-5 line-clamp-2"></p>
+      </div>
+      <div class="progress-ring shrink-0" style="--progress:0%"><span class="course-percent">0%</span></div>
+     </div>
+     <div class="mt-auto pt-4 flex justify-between items-center">
+      <button type="button" class="open-course focus-ring text-sm text-[#d7e0d0] font-semibold inline-flex items-center gap-2"><i data-lucide="arrow-up-right" class="w-4 h-4"></i>Open course</button>
+     </div>
+    </div>
+   </article>
+  </template>
+  
+  <template id="record-template">
+   <article data-template-id="record-card" class="canva-card record-card rounded-2xl bg-[#1a1a1a] border border-white/10 p-4">
+    <div class="flex justify-between gap-3">
+     <div class="min-w-0">
+      <p data-template-id="record-type" class="canva-tag inline-flex rounded-full bg-[#223024] text-[#cfe0ca] px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] font-bold"></p>
+      <h4 data-template-id="record-title" class="canva-text mt-3 font-semibold text-lg"></h4>
+      <p data-template-id="record-description" class="canva-text mt-1 text-sm text-[#9b9b95] leading-5"></p>
+      <p data-template-id="record-meta" class="canva-text mt-3 text-xs text-[#7f7f79]"></p>
+     </div><button type="button" class="toggle-record focus-ring shrink-0 w-8 h-8 rounded-full border border-white/10 flex items-center justify-center text-[#d7e0d0]"><i data-lucide="check" class="w-4 h-4"></i></button>
+    </div>
+    <div class="mt-4 pt-3 border-t border-white/10 flex items-center justify-between">
+     <button type="button" class="edit-record text-xs text-[#d7e0d0] font-semibold">Edit</button>
+     <div class="flex items-center gap-2">
+      <button type="button" data-template-id="record-delete" class="canva-button delete-record text-xs text-[#d98b7f] font-semibold">Delete</button>
+      <div class="delete-confirm hidden flex items-center gap-2">
+       <button type="button" data-template-id="record-confirm-delete" class="canva-button confirm-delete text-xs text-[#d98b7f] font-bold">Confirm</button> <button type="button" data-template-id="record-cancel-delete" class="canva-button cancel-delete text-xs text-[#a4a49d] font-semibold">Cancel</button>
+      </div>
+     </div>
+    </div>
+   </article>
+  </template>
+  
+  <template id="action-template">
+   <article data-template-id="action-card" class="canva-card rounded-2xl bg-[#1a1a1a] border border-white/10 p-4">
+    <div class="flex items-start justify-between gap-4">
+     <button type="button" class="toggle-action focus-ring shrink-0 mt-1 w-6 h-6 rounded-full border border-white/15 flex items-center justify-center text-[#111]"><i data-lucide="check" class="w-3.5 h-3.5"></i></button>
+     <div class="min-w-0 flex-1">
+      <h5 data-template-id="action-title" class="canva-text font-semibold"></h5>
+      <p data-template-id="action-description" class="canva-text text-sm text-[#9b9b95] mt-1 leading-5"></p>
+      <p data-template-id="action-meta" class="canva-text text-xs text-[#7f7f79] mt-3"></p>
+     </div>
+    </div>
+    <div class="mt-4 pt-3 border-t border-white/10 flex justify-between">
+     <button type="button" class="edit-action text-xs text-[#d7e0d0] font-semibold">Edit</button>
+     <div class="flex gap-2">
+      <button type="button" data-template-id="action-delete" class="canva-button delete-action text-xs text-[#d98b7f] font-semibold">Delete</button>
+      <div class="delete-confirm hidden flex gap-2">
+       <button type="button" data-template-id="action-confirm-delete" class="canva-button confirm-delete-action text-xs text-[#d98b7f] font-bold">Confirm</button> <button type="button" data-template-id="action-cancel-delete" class="canva-button cancel-delete-action text-xs text-[#a4a49d] font-semibold">Cancel</button>
+      </div>
+     </div>
+    </div>
+   </article>
+  </template>
+  
+  <template id="assignment-row-template">
+   <tr class="border-b border-white/5 hover:bg-white/[0.02] transition">
+    <td class="px-4 py-3"><span class="font-semibold text-white assignment-name">Untitled</span></td>
+    <td class="px-4 py-3 text-[#9b9b95] whitespace-nowrap"><span class="assignment-course">—</span></td>
+    <td class="px-4 py-3 text-[#9b9b95] whitespace-nowrap"><span class="assignment-due">—</span></td>
+    <td class="px-4 py-3 text-[#9b9b95] whitespace-nowrap"><span class="assignment-time">—</span></td>
+    <td class="px-4 py-3"><span class="inline-flex rounded-full bg-[#223024] text-[#cfe0ca] px-2 py-1 text-[10px] uppercase tracking-[0.14em] font-bold assignment-type">Assignment</span></td>
+    <td class="px-4 py-3"><button type="button" class="toggle-assignment-status inline-flex rounded-full bg-white/5 text-white px-2.5 py-1 text-xs font-medium hover:bg-white/10 transition focus-ring assignment-status whitespace-nowrap">Not Started</button></td>
+    <td class="px-4 py-3 relative">
+     <div class="flex justify-center">
+      <button type="button" class="assignment-menu-btn focus-ring w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center"><i data-lucide="more-horizontal" class="w-4 h-4"></i></button>
+      <div class="assignment-menu hidden absolute right-0 top-full mt-2 bg-[#0f0f0f] border border-white/15 rounded-xl shadow-lg overflow-hidden z-40 min-w-[140px]">
+       <button type="button" class="edit-assignment w-full px-4 py-2 text-left text-xs hover:bg-white/10 flex items-center gap-2"><i data-lucide="edit-2" class="w-3 h-3"></i>Edit</button> <button type="button" class="delete-assignment w-full px-4 py-2 text-left text-xs hover:bg-white/10 flex items-center gap-2 text-[#d98b7f]"><i data-lucide="trash-2" class="w-3 h-3"></i>Delete</button>
+      </div>
+     </div></td>
+   </tr>
+  </template>
+  
+  <template id="exam-row-template">
+   <tr class="border-b border-white/5 hover:bg-white/[0.02] transition">
+    <td class="px-4 py-3"><span class="font-semibold text-white exam-name">Untitled</span></td>
+    <td class="px-4 py-3 text-[#9b9b95] whitespace-nowrap"><span class="exam-course">—</span></td>
+    <td class="px-4 py-3 text-[#9b9b95] whitespace-nowrap"><span class="exam-date">—</span></td>
+    <td class="px-4 py-3 text-[#9b9b95] whitespace-nowrap"><span class="exam-time">—</span></td>
+    <td class="px-4 py-3 text-right"><button type="button" class="toggle-exam-status text-xs font-semibold text-[#8f8f89] hover:text-[#d7e0d0] transition focus-ring exam-status whitespace-nowrap">Mark Complete</button></td>
+    <td class="px-4 py-3 relative">
+     <div class="flex justify-center">
+      <button type="button" class="exam-menu-btn focus-ring w-6 h-6 rounded-full hover:bg-white/10 flex items-center justify-center"><i data-lucide="more-horizontal" class="w-4 h-4"></i></button>
+      <div class="exam-menu hidden absolute right-0 top-full mt-2 bg-[#0f0f0f] border border-white/15 rounded-xl shadow-lg overflow-hidden z-40 min-w-[140px]">
+       <button type="button" class="edit-exam w-full px-4 py-2 text-left text-xs hover:bg-white/10 flex items-center gap-2"><i data-lucide="edit-2" class="w-3 h-3"></i>Edit</button> <button type="button" class="delete-exam w-full px-4 py-2 text-left text-xs hover:bg-white/10 flex items-center gap-2 text-[#d98b7f]"><i data-lucide="trash-2" class="w-3 h-3"></i>Delete</button>
+      </div>
+     </div></td>
+   </tr>
+  </template>
+  
+  <script>
+    const COURSE_IMAGE_URLS = [
+        "https://i.ibb.co/1YqVNZpm/c1.png",
+        "https://i.ibb.co/H1n9NWD/c2.png",
+        "https://i.ibb.co/G41t04T2/c3.png",
+        "https://i.ibb.co/zVd70NCr/a3.png",
+        "https://i.ibb.co/Ld1Vtb30/g3.png"
+    ];
 
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif; 
-            overflow-x: hidden;
-        }
-        .pastel-gradient {
-            background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 50%, #f5f3ff 100%);
-        }
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-5px); }
-            100% { transform: translateY(0px); }
-        }
-        .float-icon {
-            animation: float 3s ease-in-out infinite;
-        }
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 44px;
-            height: 24px;
-        }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #cbd5e1;
-            transition: .4s;
-            border-radius: 24px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px; width: 18px;
-            left: 3px; bottom: 3px;
-            background-color: white;
-            transition: .4s;
-            border-radius: 50%;
-        }
-        input:checked + .slider { background-color: #38bdf8; }
-        input:checked + .slider:before { transform: translateX(20px); }
-        
-        .modal-overlay {
-            background-color: rgba(15, 23, 42, 0.3);
-            backdrop-filter: blur(8px);
-        }
-    </style>
-</head>
-<body class="pastel-gradient min-h-screen">
-    <div id="root"></div>
+    const state = { records: [], currentView: 'today', selectedCourseId: null, editingRecord: null, editingAction: null, busyIds: new Set() };
+    const currencyFormatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 });
+    
+    // --- SUPABASE CLOUD DATABASE INTEGRATION ---
+    const supabaseUrl = 'https://iblcxziwvcfstznlcliv.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImlibGN4eml3dmNmc3R6bmxjbGl2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyODY2MTksImV4cCI6MjA5Nzg2MjYxOX0.-e44e500H4fiw4Mwt2_-c3IxCruASD3e8pGSARnz3yI'; 
+    const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+    async function fetchRecords() {
+        try {
+            const { data, error } = await supabaseClient.from('records').select('*').order('created_at', { ascending: false });
+            if (error) throw error;
+            state.records = data.map(item => ({ ...item, __backendId: item.id }));
+            if (typeof render === 'function') render();
+        } catch (error) {
+            console.error('Error fetching data:', error);
+        }
+    }
 
-        // --- PERSONAL CONFIGURATION ---
-        const apiKey = "AIzaSyCiLbux2VxBTFmcZEDiuIKmeTpWaW6MttY"; 
-        const GEMINI_MODEL = "gemini-2.5-flash-preview-09-2025";
-        
-        // --- SECURITY CONFIGURATION ---
-        const MASTER_KEY = "1234"; 
-        
-        const firebaseConfig = {
-            apiKey: "AIzaSyCJYmrpUChqCP0piuf4CN1kdAaXZgYAzKw", 
-            authDomain: "portal-d08a4.firebaseapp.com",
-            projectId: "portal-d08a4",
-            storageBucket: "portal-d08a4.firebasestorage.app",
-            messagingSenderId: "999873421490",
-            appId: "1:999873421490:web:b930ef9a0c067c3d2369ab",
-            measurementId: "G-FM007Q1897"
-        };
-
-        const appId = 'sarvartha-portal-v1';
-
-        const initFirebase = async () => {
-            let attempts = 0;
-            while (!window.FirebaseBridge && attempts < 50) {
-                await new Promise(r => setTimeout(r, 100));
-                attempts++;
-            }
-            if (!window.FirebaseBridge) return null;
-            
-            const fb = window.FirebaseBridge;
+    const mySdk = {
+        async create(data) {
             try {
-                let app = fb.getApps().length === 0 ? fb.initializeApp(firebaseConfig) : fb.getApp();
-                const db = fb.getFirestore(app);
-                const auth = fb.getAuth(app);
-                return { ...fb, db, auth };
-            } catch (e) {
-                console.error("Firebase Init Error", e);
-                return null;
-            }
+                const { error } = await supabaseClient.from('records').insert([data]);
+                if (error) throw error;
+                await fetchRecords();
+                return {isOk:true};
+            } catch(e) { console.error(e); return {isError:true}; }
+        },
+        async update(item) {
+            try {
+                const { __backendId, id, ...updateData } = item;
+                const { error } = await supabaseClient.from('records').update(updateData).eq('id', item.__backendId);
+                if (error) throw error;
+                await fetchRecords();
+                return {isOk:true};
+            } catch(e) { console.error(e); return {isError:true}; }
+        },
+        async delete(item) {
+            try {
+                const { error } = await supabaseClient.from('records').delete().eq('id', item.__backendId);
+                if (error) throw error;
+                await fetchRecords();
+                return {isOk:true};
+            } catch(e) { console.error(e); return {isError:true}; }
+        }
+    };
+
+    function byType(type){return state.records.filter(r=>r.type===type)}
+    function formatDate(v){if(!v)return ''; const d=new Date(v); return Number.isNaN(d.getTime())?'':d.toLocaleDateString('en-IN',{day:'numeric',month:'short'})}
+    function setEmpty(id,show){document.getElementById(id).classList.toggle('hidden',!show)}
+    function getCourseActions(id){return state.records.filter(r=>r.type==='course_action'&&r.parent_course===id)}
+    function getProgress(id){const a=getCourseActions(id),done=a.filter(x=>x.completed).length;return{total:a.length,done,percent:a.length?Math.round(done/a.length*100):0}}
+
+    function setView(view){
+      state.currentView=view;
+      document.querySelectorAll('.nav-item').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+      document.querySelectorAll('.view-panel').forEach(p=>p.classList.remove('active'));
+      document.getElementById('view-'+view).classList.add('active');
+      if(view!=='courses') closeCourseDetail();
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    function updateStats(){
+      const tasks=byType('task'), habits=byType('habit'), courses=byType('course');
+      document.getElementById('stat-tasks').textContent=tasks.length;
+      document.getElementById('stat-complete').textContent=tasks.filter(t=>t.completed).length+habits.filter(h=>h.completed).length;
+      document.getElementById('stat-budget').textContent=habits.length;
+      document.getElementById('stat-courses').textContent=courses.length;
+    }
+
+    function renderPreview(containerId,items,mode){
+      const c=document.getElementById(containerId);
+      c.innerHTML='';
+      items.slice(0,4).forEach(item=>{
+        const row=document.createElement('div');
+        row.className='rounded-xl bg-white/[0.03] border border-white/5 px-3 py-3 flex items-center justify-between gap-3';
+        const left=document.createElement('div'); left.className='min-w-0 flex-1';
+        const title=document.createElement('p'); title.className='text-sm font-semibold truncate'; title.textContent=item.title||'Untitled';
+        const meta=document.createElement('p'); meta.className='text-xs text-[#8f8f89] mt-1';
+        meta.textContent=mode==='task'?(item.due_date?'Due '+formatDate(item.due_date):'No due date'):(item.completed?'Done today':'Not done yet');
+        left.append(title,meta);
+        const dot=document.createElement('div'); dot.className='w-2.5 h-2.5 rounded-full shrink-0 '+(item.completed?'bg-[#a9c7a3]':'bg-[#4f4f4b]');
+        row.append(left,dot);
+        c.appendChild(row);
+      });
+    }
+
+    function renderCoursePreview(courses){
+      const c=document.getElementById('course-preview-list');
+      c.innerHTML='';
+      courses.slice(0,4).forEach(course=>{
+        const p=getProgress(course.__backendId);
+        const btn=document.createElement('button');
+        btn.type='button';
+        btn.className='w-full text-left rounded-xl bg-white/[0.03] border border-white/5 px-3 py-3 hover:bg-white/[0.05] transition focus-ring';
+        btn.innerHTML=`<div class="flex justify-between gap-3"><p class="text-sm font-semibold truncate">${course.title||'Untitled course'}</p><p class="text-xs text-[#d7e0d0] font-bold">${p.percent}%</p></div><div class="h-1.5 bg-[#2a2a2a] rounded-full overflow-hidden mt-3"><div class="h-full rounded-full bg-[#d7e0d0]" style="width:${p.percent}%"></div></div>`;
+        btn.onclick=()=>{setView('courses');openCourseDetail(course.__backendId)};
+        c.appendChild(btn);
+      });
+    }
+
+    function syncList(containerId,items,creator){
+      const c=document.getElementById(containerId);
+      c.innerHTML='';
+      items.forEach(i=>c.appendChild(creator(i)));
+      lucide.createIcons();
+    }
+
+    function createCourseElement(course){
+      const node=document.getElementById('course-template').content.firstElementChild.cloneNode(true);
+      const imgElement=node.querySelector('.course-img');
+      
+      let charSum = 0;
+      if (course.__backendId) {
+          for(let i=0; i<course.__backendId.length; i++) charSum += course.__backendId.charCodeAt(i);
+      }
+      imgElement.src = course.cover_image_id || COURSE_IMAGE_URLS[charSum % COURSE_IMAGE_URLS.length];
+      
+      node.querySelector('[data-template-id="course-card-title"]').textContent=course.title||'Untitled course';
+      node.querySelector('[data-template-id="course-card-description"]').textContent=course.description||'No notes added yet.';
+      const p=getProgress(course.__backendId);
+      node.querySelector('.course-percent').textContent=p.percent+'%';
+      node.querySelector('.progress-ring').style.setProperty('--progress',p.percent+'%');
+      node.querySelector('.open-course').onclick=(e)=>{e.stopPropagation();openCourseDetail(course.__backendId)};
+      node.onclick=()=>openCourseDetail(course.__backendId);
+      return node;
+    }
+
+    function showInline(anchor,text){
+      const n=document.createElement('span');
+      n.className='ml-2 text-xs text-[#d98b7f]';
+      n.textContent=text;
+      anchor.parentElement.appendChild(n);
+      setTimeout(()=>n.remove(),2200);
+    }
+
+    function createRecordElement(item){
+      const node=document.getElementById('record-template').content.firstElementChild.cloneNode(true);
+      node.querySelector('[data-template-id="record-type"]').textContent=item.type;
+      node.querySelector('[data-template-id="record-title"]').textContent=item.title||'Untitled';
+      node.querySelector('[data-template-id="record-description"]').textContent=item.description||'';
+      let meta='';
+      if(item.type==='task') meta=item.due_date?'Due '+formatDate(item.due_date):'No due date';
+      if(item.type==='habit') meta=item.completed?'Completed today':'Build the streak';
+      node.querySelector('[data-template-id="record-meta"]').textContent=meta;
+
+      const toggle=node.querySelector('.toggle-record');
+      if(item.type!=='task'&&item.type!=='habit') toggle.classList.add('hidden');
+      else{
+        toggle.classList.toggle('bg-[#d7e0d0]',!!item.completed);
+        toggle.onclick=async()=>{
+          if(state.busyIds.has(item.__backendId))return;
+          state.busyIds.add(item.__backendId);
+          toggle.classList.add('opacity-50');
+          item.completed=!item.completed;
+          const r=await mySdk.update(item);
+          state.busyIds.delete(item.__backendId);
+          toggle.classList.remove('opacity-50');
+          if(r.isError){item.completed=!item.completed;showInline(toggle,'Could not update')}
         };
+      }
 
-        const Icon = ({ name, className, size = 20 }) => {
-            const containerRef = useRef(null);
-            useEffect(() => {
-                if (window.lucide && containerRef.current) {
-                    window.lucide.createIcons();
-                }
-            }, [name]);
-            return (
-                <span 
-                    ref={containerRef}
-                    className={`inline-flex items-center justify-center ${className || ''}`}
-                    style={{ width: size, height: size }}
-                    dangerouslySetInnerHTML={{ 
-                        __html: `<i data-lucide="${name}" style="width: ${size}px; height: ${size}px;"></i>` 
-                    }}
-                />
-            );
+      node.querySelector('.edit-record').onclick=()=>openEditModal(item);
+      const del=node.querySelector('.delete-record'),wrap=node.querySelector('.delete-confirm'),confirm=node.querySelector('.confirm-delete'),cancel=node.querySelector('.cancel-delete');
+      del.onclick=()=>{del.classList.add('hidden');wrap.classList.remove('hidden')};
+      cancel.onclick=()=>{wrap.classList.add('hidden');del.classList.remove('hidden')};
+      confirm.onclick=async()=>{
+        if(state.busyIds.has(item.__backendId))return;
+        state.busyIds.add(item.__backendId);
+        confirm.textContent='Deleting...';
+        const r=await mySdk.delete(item);
+        state.busyIds.delete(item.__backendId);
+        if(r.isError){confirm.textContent='Try again';showInline(confirm,'Could not delete')}
+      };
+      return node;
+    }
+
+    function createActionElement(item){
+      const node=document.getElementById('action-template').content.firstElementChild.cloneNode(true);
+      node.querySelector('[data-template-id="action-title"]').textContent=item.title||'Untitled action';
+      node.querySelector('[data-template-id="action-description"]').textContent=item.description||'';
+      node.querySelector('[data-template-id="action-meta"]').textContent=item.due_date?'Due '+formatDate(item.due_date):'No due date';
+      const toggle=node.querySelector('.toggle-action');
+      if(item.completed){toggle.classList.add('bg-[#d7e0d0]');node.classList.add('opacity-70')}
+      toggle.onclick=async()=>{
+        if(state.busyIds.has(item.__backendId))return;
+        state.busyIds.add(item.__backendId);
+        toggle.classList.add('opacity-50');
+        item.completed=!item.completed;
+        const r=await mySdk.update(item);
+        state.busyIds.delete(item.__backendId);
+        toggle.classList.remove('opacity-50');
+        if(r.isError){item.completed=!item.completed;showInline(toggle,'Could not update')}
+      };
+
+      node.querySelector('.edit-action').onclick=()=>openEditActionModal(item);
+      const del=node.querySelector('.delete-action'),wrap=node.querySelector('.delete-confirm'),confirm=node.querySelector('.confirm-delete-action'),cancel=node.querySelector('.cancel-delete-action');
+      del.onclick=()=>{del.classList.add('hidden');wrap.classList.remove('hidden')};
+      cancel.onclick=()=>{wrap.classList.add('hidden');del.classList.remove('hidden')};
+      confirm.onclick=async()=>{
+        if(state.busyIds.has(item.__backendId))return;
+        state.busyIds.add(item.__backendId);
+        confirm.textContent='Deleting...';
+        const r=await mySdk.delete(item);
+        state.busyIds.delete(item.__backendId);
+        if(r.isError){confirm.textContent='Try again';showInline(confirm,'Could not delete')}
+      };
+      return node;
+    }
+
+    function render(){
+      updateStats();
+      const tasks=byType('task').filter(t=>t.category!=='exam'),courses=byType('course'),budget=byType('budget'),notes=byType('note'),habits=byType('habit');
+      renderPreview('today-list',tasks.filter(t=>!t.completed),'task');
+      renderPreview('deadline-list',tasks.filter(t=>t.due_date&&!t.completed),'task');
+      renderPreview('habit-preview-list',habits,'habit');
+      renderCoursePreview(courses);
+      
+      setEmpty('today-empty',tasks.filter(t=>!t.completed).length===0);
+      setEmpty('deadline-empty',tasks.filter(t=>t.due_date&&!t.completed).length===0);
+      setEmpty('habit-empty',habits.length===0);
+      setEmpty('course-preview-empty',courses.length===0);
+      
+      syncList('courses-list',courses,createCourseElement);
+      syncList('habits-list',habits,createRecordElement);
+      
+      setEmpty('courses-empty',courses.length===0);
+      setEmpty('habits-empty',habits.length===0);
+      
+      const allActions=state.records.filter(r=>r.type==='course_action'),done=allActions.filter(a=>a.completed).length;
+      document.getElementById('overall-progress-value').textContent=(allActions.length?Math.round(done/allActions.length*100):0)+'%';
+      document.getElementById('overall-progress-meta').textContent=done+'/'+allActions.length+' actions';
+      if(state.selectedCourseId)renderSelectedCourse();
+      renderTrackerTables();
+    }
+
+    function renderTrackerTables(){
+      const allTasks=byType('task');
+      const assignments=allTasks.filter(t=>t.category!=='exam');
+      const exams=allTasks.filter(t=>t.category==='exam');
+      syncTrackerList('assignment-list',assignments,'assignment');
+      syncTrackerList('exam-list',exams,'exam');
+      setEmpty('assignments-empty',assignments.length===0);
+      setEmpty('exams-empty',exams.length===0);
+    }
+
+    function syncTrackerList(containerId,items,type){
+      const container=document.getElementById(containerId);
+      container.innerHTML='';
+      items.forEach(item=>container.appendChild(createTrackerRow(item,type)));
+      lucide.createIcons();
+    }
+
+    function createTrackerRow(item,type){
+      const template=document.getElementById(type+'-row-template');
+      const row=template.content.firstElementChild.cloneNode(true);
+      const dueDate=item.due_date?new Date(item.due_date):null;
+      let isOverdue=false;
+      let timeLeft='—';
+      if(dueDate){
+        const now=new Date();
+        const diffMs=dueDate-now;
+        const dueCal=new Date(dueDate); dueCal.setHours(0,0,0,0);
+        const todayCal=new Date(); todayCal.setHours(0,0,0,0);
+        const diffDays=Math.round((dueCal-todayCal)/(1000*60*60*24));
+        
+        if(diffMs<0&&diffDays<0){
+          if(type==='assignment'){ timeLeft='Overdue'; isOverdue=true; }
+          else{ timeLeft=Math.abs(diffDays)===1?'1 day ago':`${Math.abs(diffDays)} days ago`; }
+        }else if(diffMs>=0&&diffMs<=86400000){
+          const hrs=Math.floor(diffMs/(1000*60*60));
+          const mins=Math.floor((diffMs%(1000*60*60))/(1000*60));
+          timeLeft=hrs>0?`${hrs}h ${mins}m`:`${mins}m`;
+        }else if(diffDays>=30){
+          const months=Math.floor(diffDays/30); const weeks=Math.floor((diffDays%30)/7);
+          timeLeft=weeks>0?`${months}mo ${weeks}w`:`${months}mo`;
+        }else if(diffDays>=14){
+          const weeks=Math.floor(diffDays/7); const days=diffDays%7;
+          timeLeft=days>0?`${weeks}w ${days}d`:`${weeks}w`;
+        }else{
+          timeLeft=diffDays===0?'Today':(diffDays===1?'Tomorrow':`${diffDays} days`);
+        }
+      }
+
+      if(type==='assignment'){
+        row.querySelector('.assignment-name').textContent=item.title||'Untitled';
+        row.querySelector('.assignment-course').textContent=item.parent_course||'—';
+        row.querySelector('.assignment-due').textContent=formatDate(item.due_date);
+        const timeCell=row.querySelector('.assignment-time');
+        timeCell.textContent=timeLeft;
+        if(isOverdue)timeCell.classList.add('text-[#d98b7f]','font-bold');
+        row.querySelector('.assignment-type').textContent=item.time_slot||'Assignment';
+        let currentStatus=item.day||'Not Started';
+        const statusColors={
+          'Not Started':'border-[#d98b7f]/30 text-[#d98b7f]', 'In Progress':'border-[#ead7a5]/30 text-[#ead7a5]',
+          'Completed':'border-[#7f9f7c]/30 text-[#7f9f7c]', 'Submitted':'border-[#7fb5d9]/30 text-[#7fb5d9]'
         };
-
-        const App = () => {
-            const [links, setLinks] = useState([]);
-            const [isAdding, setIsAdding] = useState(false);
-            const [searchTerm, setSearchTerm] = useState('');
-            const [user, setUser] = useState(null);
-            const [newLink, setNewLink] = useState({ title: '', url: '', category: 'Project' });
-            const [fb, setFb] = useState(null);
-            const [isAiGenerating, setIsAiGenerating] = useState(false);
-            const [insightLoadingId, setInsightLoadingId] = useState(null);
-            const [authError, setAuthError] = useState(null);
-            
-            // Admin State
-            const [isAdmin, setIsAdmin] = useState(() => {
-                return sessionStorage.getItem('portal_admin') === 'true';
-            });
-            const [showLogin, setShowLogin] = useState(false);
-            const [passwordInput, setPasswordInput] = useState('');
-            const [loginError, setLoginError] = useState(false);
-
-            const [isCloudEnabled, setIsCloudEnabled] = useState(() => {
-                const pref = localStorage.getItem('portal_cloud_pref');
-                return pref === null ? true : pref === 'true';
-            });
-
-            useEffect(() => {
-                localStorage.setItem('portal_cloud_pref', isCloudEnabled);
-            }, [isCloudEnabled]);
-
-            useEffect(() => {
-                initFirebase().then(services => setFb(services));
-            }, []);
-
-            useEffect(() => {
-                if (!isCloudEnabled || !fb || !user) {
-                    setLinks(JSON.parse(localStorage.getItem('portal_links') || '[]'));
-                    return;
-                }
-                const q = fb.collection(fb.db, 'artifacts', appId, 'public', 'data', 'links');
-                const unsub = fb.onSnapshot(q, (snap) => {
-                    const fetched = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-                    fetched.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                    setLinks(fetched);
-                }, (err) => {
-                    if (err.code === 'permission-denied') setAuthError("Check Firestore Rules.");
-                });
-                return () => unsub();
-            }, [fb, user, isCloudEnabled]);
-
-            useEffect(() => {
-                if (!fb) return;
-                const initAuth = async () => {
-                    try {
-                        await fb.signInAnonymously(fb.auth);
-                        setAuthError(null);
-                    } catch(e) { 
-                        if (e.code === 'auth/configuration-not-found') setAuthError("Enable Anonymous Auth.");
-                        else setAuthError(e.message);
-                    }
-                };
-                initAuth();
-                const unsub = fb.onAuthStateChanged(fb.auth, u => setUser(u));
-                return () => unsub();
-            }, [fb]);
-
-            const handleLogin = (e) => {
-                e.preventDefault();
-                if (passwordInput === MASTER_KEY) {
-                    setIsAdmin(true);
-                    sessionStorage.setItem('portal_admin', 'true');
-                    setShowLogin(false);
-                    setPasswordInput('');
-                    setLoginError(false);
-                } else {
-                    setLoginError(true);
-                }
-            };
-
-            const handleLogout = () => {
-                setIsAdmin(false);
-                sessionStorage.removeItem('portal_admin');
-            };
-
-            const callGemini = async (prompt, systemInstruction = "") => {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${apiKey}`;
-                const payload = {
-                    contents: [{ parts: [{ text: prompt }] }],
-                    systemInstruction: systemInstruction ? { parts: [{ text: systemInstruction }] } : undefined
-                };
-                try {
-                    const response = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                    const data = await response.json();
-                    return data.candidates?.[0]?.content?.parts?.[0]?.text;
-                } catch (e) { return null; }
-            };
-
-            const autoFillMetadata = async () => {
-                if (!newLink.url) return;
-                setIsAiGenerating(true);
-                const res = await callGemini(`URL: ${newLink.url}. Suggest title and category: [Project, Tool, Social, Reference, Other]. JSON ONLY: {"title": "...", "category": "..."}`, "Return valid JSON.");
-                if (res) {
-                    try {
-                        const data = JSON.parse(res.replace(/```json|```/g, '').trim());
-                        setNewLink(prev => ({ ...prev, ...data }));
-                    } catch(e) {}
-                }
-                setIsAiGenerating(false);
-            };
-
-            const generateInsight = async (link) => {
-                if (!isAdmin) return;
-                setInsightLoadingId(link.id);
-                const insight = await callGemini(`Analyze: ${link.title} (${link.url}). 1-sentence insight.`, "Inspiring mentor.");
-                if (insight) {
-                    if (isCloudEnabled && fb && user) {
-                        const docRef = fb.doc(fb.db, 'artifacts', appId, 'public', 'data', 'links', link.id);
-                        await fb.updateDoc(docRef, { insight });
-                    } else {
-                        const updated = links.map(l => l.id === link.id ? { ...l, insight } : l);
-                        setLinks(updated);
-                        localStorage.setItem('portal_links', JSON.stringify(updated));
-                    }
-                }
-                setInsightLoadingId(null);
-            };
-
-            const saveLink = async (e) => {
-                e.preventDefault();
-                if (!isAdmin) return;
-                const linkData = { ...newLink, id: Date.now().toString(), createdAt: new Date().toISOString() };
-                if (isCloudEnabled && fb && user) {
-                    const docRef = fb.doc(fb.db, 'artifacts', appId, 'public', 'data', 'links', linkData.id);
-                    await fb.setDoc(docRef, linkData);
-                } else {
-                    const updated = [linkData, ...links];
-                    setLinks(updated);
-                    localStorage.setItem('portal_links', JSON.stringify(updated));
-                }
-                setNewLink({ title: '', url: '', category: 'Project' });
-                setIsAdding(false);
-            };
-
-            const removeLink = async (id) => {
-                if (!isAdmin) return;
-                if (isCloudEnabled && fb && user) {
-                    const docRef = fb.doc(fb.db, 'artifacts', appId, 'public', 'data', 'links', id);
-                    await fb.deleteDoc(docRef);
-                } else {
-                    const updated = links.filter(l => l.id !== id);
-                    setLinks(updated);
-                    localStorage.setItem('portal_links', JSON.stringify(updated));
-                }
-            };
-
-            const filteredLinks = links.filter(l => l.title.toLowerCase().includes(searchTerm.toLowerCase()));
-            const categories = ['Project', 'Tool', 'Social', 'Reference', 'Other'];
-            const getCategoryColor = (cat) => {
-                const colors = { Project: 'bg-blue-100 text-blue-600', Tool: 'bg-violet-100 text-violet-600', Social: 'bg-pink-100 text-pink-600', Reference: 'bg-emerald-100 text-emerald-600' };
-                return colors[cat] || 'bg-slate-100 text-slate-600';
-            };
-
-            return (
-                <div className="p-4 md:p-12 max-w-7xl mx-auto flex flex-col min-h-screen">
-                    <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-20">
-                        <div className="relative flex items-center gap-5">
-                            <div className="absolute -top-10 -left-10 w-24 h-24 bg-sky-200/40 rounded-full blur-3xl animate-pulse"></div>
-                            
-                            {/* Stars Box: Clicking this opens the Admin Login */}
-                            <div 
-                                onClick={() => !isAdmin ? setShowLogin(true) : handleLogout()}
-                                className="relative group cursor-pointer z-10"
-                                title={isAdmin ? "Logout" : "Admin Login"}
-                            >
-                                <div className={`bg-gradient-to-br from-sky-400 to-violet-400 p-3.5 rounded-2xl shadow-xl transform transition-all ${isAdmin ? 'ring-4 ring-sky-300' : 'group-hover:scale-110 active:scale-95'}`}>
-                                    <Icon name="sparkles" className="text-white fill-white" size={32} />
-                                </div>
-                                {isAdmin && (
-                                    <div className="absolute -bottom-1 -right-1 bg-emerald-500 text-white p-1 rounded-full z-20 shadow-lg border-2 border-white">
-                                        <Icon name="check" size={8} />
-                                    </div>
-                                )}
-                            </div>
-                            
-                            <div>
-                                <h1 className="text-4xl font-[900] tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-sky-400 to-violet-500">
-                                    Portal
-                                </h1>
-                                <p className="text-slate-400 font-medium tracking-wide uppercase text-[10px]">Sarvartha's Redirection Hub</p>
-                            </div>
-                        </div>
-
-                        <div className="flex flex-col sm:flex-row items-center gap-6 w-full md:w-auto">
-                            <div className="flex flex-col items-end gap-1">
-                                <div className="flex items-center gap-3 bg-white/50 px-4 py-2 rounded-2xl border border-sky-100/50 shadow-sm">
-                                    <span className={`text-[10px] font-black uppercase tracking-widest ${isCloudEnabled ? 'text-sky-500' : 'text-slate-400'}`}>Cloud Sync</span>
-                                    <label className="switch">
-                                        <input type="checkbox" checked={isCloudEnabled} onChange={() => setIsCloudEnabled(!isCloudEnabled)} />
-                                        <span className="slider"></span>
-                                    </label>
-                                </div>
-                            </div>
-                            <div className="flex gap-4 w-full sm:w-auto">
-                                <div className="relative flex-1 sm:w-64 group">
-                                    <Icon name="search" className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-sky-400 transition-colors" size={16} />
-                                    <input type="text" placeholder="Search..." className="w-full pl-11 pr-4 py-4 bg-white/90 border border-sky-100 rounded-[1.5rem] outline-none shadow-sm focus:ring-4 focus:ring-sky-500/5 transition-all" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                                </div>
-                                {isAdmin && (
-                                    <button onClick={() => setIsAdding(true)} className="bg-gradient-to-r from-sky-400 to-violet-400 text-white p-4 rounded-[1.5rem] shadow-xl shadow-sky-500/20 hover:scale-105 active:scale-95 transition-all">
-                                        <Icon name="plus" size={24} />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </header>
-
-                    <main className="flex-grow">
-                        {filteredLinks.length === 0 ? (
-                            <div className="py-40 text-center border-2 border-dashed border-sky-100 rounded-[3rem] bg-white/30 backdrop-blur-sm">
-                                <Icon name="link" className="text-sky-200 mx-auto mb-6" size={32} />
-                                <p className="text-slate-400 font-semibold tracking-tight px-4">Your portal is empty.</p>
-                                {!isAdmin && <p className="text-[10px] text-slate-300 mt-2 italic uppercase tracking-widest">Access Restricted to Admin</p>}
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-                                {filteredLinks.map(link => (
-                                    <div key={link.id} className="group bg-white/80 backdrop-blur-xl border border-white p-8 rounded-[2.5rem] hover:shadow-2xl hover:shadow-sky-500/10 hover:-translate-y-2 transition-all duration-500">
-                                        <div className="flex justify-between mb-8">
-                                            <span className={`px-4 py-1.5 text-[9px] font-[800] tracking-widest uppercase rounded-full shadow-sm ${getCategoryColor(link.category)}`}>{link.category}</span>
-                                            {isAdmin && (
-                                                <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <button onClick={() => generateInsight(link)} className="p-2 text-sky-400 hover:bg-sky-50 rounded-full" title="AI Insight">
-                                                        {insightLoadingId === link.id ? <Icon name="loader-2" className="animate-spin" /> : <Icon name="brain-circuit" />}
-                                                    </button>
-                                                    <button onClick={() => removeLink(link.id)} className="p-2 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-full" title="Delete"><Icon name="trash-2" /></button>
-                                                </div>
-                                            )}
-                                        </div>
-                                        <h3 className="font-[800] text-2xl mb-2 text-slate-800 leading-tight">{link.title}</h3>
-                                        <p className="text-[10px] text-slate-400 font-mono mb-6 truncate">{link.url.replace(/^https?:\/\//, '')}</p>
-                                        {link.insight && <div className="mb-8 p-4 bg-sky-50/50 rounded-2xl border border-sky-100/50"><p className="text-[11px] leading-relaxed text-sky-700 italic font-medium">✨ {link.insight}</p></div>}
-                                        <a href={link.url} target="_blank" className="w-full flex justify-center py-4 bg-slate-50 font-bold text-xs uppercase tracking-widest text-slate-500 rounded-2xl hover:bg-sky-500 hover:text-white transition-all shadow-sm">Launch</a>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </main>
-
-                    {showLogin && (
-                        <div className="fixed inset-0 modal-overlay flex items-center justify-center p-6 z-[150] animate-in fade-in duration-200">
-                            <div className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 shadow-2xl border border-white transform animate-in zoom-in duration-200">
-                                <h2 className="text-xl font-black text-center mb-6 text-slate-800">Admin Mode</h2>
-                                <form onSubmit={handleLogin} className="space-y-4">
-                                    <input 
-                                        type="password" 
-                                        autoFocus
-                                        placeholder="Secret Key" 
-                                        className={`w-full p-4 bg-slate-50 border-none rounded-xl outline-none text-center font-bold tracking-widest focus:ring-2 ${loginError ? 'ring-2 ring-red-400' : 'focus:ring-sky-200'}`}
-                                        value={passwordInput}
-                                        onChange={e => { setPasswordInput(e.target.value); setLoginError(false); }}
-                                    />
-                                    {loginError && <p className="text-[10px] text-red-500 font-bold text-center uppercase">Incorrect Key</p>}
-                                    <div className="flex gap-2">
-                                        <button type="button" onClick={() => {setShowLogin(false); setLoginError(false);}} className="flex-1 py-3 text-[10px] font-black uppercase text-slate-400">Close</button>
-                                        <button type="submit" className="flex-1 py-3 text-[10px] font-black uppercase bg-sky-400 text-white rounded-xl shadow-lg shadow-sky-500/20">Verify</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-
-                    {isAdding && isAdmin && (
-                        <div className="fixed inset-0 modal-overlay flex items-center justify-center p-6 z-[100] animate-in fade-in duration-300">
-                            <div className="bg-white w-full max-w-lg rounded-[3.5rem] p-10 shadow-2xl border border-white transform animate-in zoom-in duration-300">
-                                <h2 className="text-3xl font-[900] text-center mb-10 text-slate-800">New Creation</h2>
-                                <form onSubmit={saveLink} className="space-y-6">
-                                    <div className="flex justify-between mb-2 px-2"><label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">URL</label><button type="button" onClick={autoFillMetadata} disabled={!newLink.url || isAiGenerating} className="text-sky-500 text-[10px] font-black uppercase flex items-center gap-2 px-2 py-1 bg-sky-50 rounded-lg hover:bg-sky-100 disabled:opacity-50 transition-all">{isAiGenerating ? <Icon name="loader-2" size={12} className="animate-spin" /> : <Icon name="sparkles" size={12} />} Magic Fill</button></div>
-                                    <input type="url" required placeholder="https://..." className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] outline-none focus:ring-4 focus:ring-sky-500/5 transition-all" value={newLink.url} onChange={e => setNewLink({...newLink, url: e.target.value})} />
-                                    <label className="text-[10px] font-black uppercase text-slate-400 tracking-widest block px-2">Title</label>
-                                    <input type="text" required placeholder="Project Name" className="w-full p-5 bg-slate-50 border-none rounded-[1.5rem] outline-none focus:ring-4 focus:ring-sky-500/10 transition-all" value={newLink.title} onChange={e => setNewLink({...newLink, title: e.target.value})} />
-                                    <div className="flex flex-wrap gap-2 pt-2">
-                                        {categories.map(cat => (<button key={cat} type="button" onClick={() => setNewLink({...newLink, category: cat})} className={`px-5 py-2.5 rounded-xl text-[10px] font-bold uppercase transition-all ${newLink.category === cat ? 'bg-sky-400 text-white shadow-lg shadow-sky-400/20' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}>{cat}</button>))}
-                                    </div>
-                                    <div className="flex gap-4 pt-6">
-                                        <button type="button" onClick={() => setIsAdding(false)} className="flex-1 py-5 font-black uppercase text-slate-400 hover:text-slate-600 transition-all">Cancel</button>
-                                        <button type="submit" className="flex-1 py-5 font-black uppercase bg-gradient-to-r from-sky-400 to-violet-500 text-white rounded-[1.5rem] shadow-xl shadow-sky-500/20 hover:scale-[1.02] active:scale-95 transition-all">Save</button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    )}
-                    
-                    <footer className="mt-32 pb-12 text-center space-y-4">
-                        <div className="flex flex-col items-center gap-2">
-                            <Icon name="heart" className="text-pink-300 fill-pink-300 float-icon" size={14} />
-                            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Created with Love • Designed by Sarvartha</p>
-                        </div>
-                        <div className="flex items-center justify-center gap-4 opacity-40 hover:opacity-100 transition-opacity">
-                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest"><Icon name="zap" size={10} className="text-amber-400 fill-amber-400" /> Powered by Gemini</div>
-                            <span className="text-slate-200">|</span>
-                            <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-500 uppercase tracking-widest"><Icon name="layout" size={10} className="text-sky-400" /> Redirection Hub 2.0</div>
-                        </div>
-                    </footer>
-                </div>
-            );
+        const applyStatusColor=(btn,status)=>{
+          btn.textContent=status;
+          btn.className=`toggle-assignment-status inline-flex rounded-full bg-white/5 px-2.5 py-1 text-[10px] font-bold border hover:bg-white/10 transition focus-ring assignment-status whitespace-nowrap ${statusColors[status]||statusColors['Not Started']}`;
         };
+        applyStatusColor(row.querySelector('.assignment-status'),currentStatus);
+        row.querySelector('.assignment-menu-btn').onclick=()=>row.querySelector('.assignment-menu').classList.toggle('hidden');
+        row.querySelector('.edit-assignment').onclick=()=>openEditModal(item);
+        row.querySelector('.delete-assignment').onclick=async()=>{
+          if(state.busyIds.has(item.__backendId))return;
+          state.busyIds.add(item.__backendId);
+          await mySdk.delete(item);
+          state.busyIds.delete(item.__backendId);
+        };
+        row.querySelector('.toggle-assignment-status').onclick=async()=>{
+          if(state.busyIds.has(item.__backendId))return;
+          state.busyIds.add(item.__backendId);
+          const statuses=['Not Started','In Progress','Completed','Submitted'];
+          let nextStatus=statuses[(statuses.indexOf(currentStatus)+1)%4];
+          item.day=nextStatus;
+          item.completed=(nextStatus==='Completed'||nextStatus==='Submitted');
+          applyStatusColor(row.querySelector('.assignment-status'),'Saving...');
+          const r=await mySdk.update(item);
+          state.busyIds.delete(item.__backendId);
+          if(!r.isError)currentStatus=nextStatus;
+          applyStatusColor(row.querySelector('.assignment-status'),currentStatus);
+        };
+      }else if(type==='exam'){
+        row.querySelector('.exam-name').textContent=item.title||'Untitled';
+        row.querySelector('.exam-course').textContent=item.parent_course||'—';
+        row.querySelector('.exam-date').textContent=formatDate(item.due_date);
+        const timeCell=row.querySelector('.exam-time');
+        timeCell.textContent=timeLeft;
+        if(isOverdue)timeCell.classList.add('text-[#d98b7f]','font-bold');
+        const examBtn=row.querySelector('.exam-status');
+        examBtn.textContent=item.completed?'Completed':'Mark Complete';
+        examBtn.className=item.completed?'toggle-exam-status text-xs font-bold text-[#d7e0d0] hover:text-white transition exam-status whitespace-nowrap':'toggle-exam-status text-xs font-semibold text-[#8f8f89] hover:text-[#d7e0d0] transition exam-status whitespace-nowrap';
+        row.querySelector('.exam-menu-btn').onclick=()=>row.querySelector('.exam-menu').classList.toggle('hidden');
+        row.querySelector('.edit-exam').onclick=()=>openEditModal(item);
+        row.querySelector('.delete-exam').onclick=async()=>{
+          if(state.busyIds.has(item.__backendId))return;
+          state.busyIds.add(item.__backendId);
+          await mySdk.delete(item);
+          state.busyIds.delete(item.__backendId);
+        };
+        row.querySelector('.toggle-exam-status').onclick=async()=>{
+          if(state.busyIds.has(item.__backendId))return;
+          state.busyIds.add(item.__backendId);
+          item.completed=!item.completed;
+          examBtn.textContent='Saving...';
+          const r=await mySdk.update(item);
+          state.busyIds.delete(item.__backendId);
+          if(r.isError)item.completed=!item.completed;
+          examBtn.textContent=item.completed?'Completed':'Mark Complete';
+          examBtn.className=item.completed?'toggle-exam-status text-xs font-bold text-[#d7e0d0] hover:text-white transition exam-status whitespace-nowrap':'toggle-exam-status text-xs font-semibold text-[#8f8f89] hover:text-[#d7e0d0] transition exam-status whitespace-nowrap';
+        };
+      }
+      return row;
+    }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
+    function openCourseDetail(id){
+      const course=byType('course').find(c=>c.__backendId===id); if(!course)return;
+      state.selectedCourseId=id;
+      document.getElementById('course-overview').classList.add('hidden');
+      document.getElementById('course-detail').classList.remove('hidden');
+      document.getElementById('detail-course-title').textContent=course.title||'Untitled course';
+      document.getElementById('detail-course-description').textContent=course.description||'No description added yet.';
+      
+      let charSum = 0;
+      if (course.__backendId) {
+          for(let i=0; i<course.__backendId.length; i++) charSum += course.__backendId.charCodeAt(i);
+      }
+      document.querySelector('.detail-img').src = course.cover_image_id || COURSE_IMAGE_URLS[charSum % COURSE_IMAGE_URLS.length];
+      
+      document.getElementById('course-menu').classList.add('hidden');
+      document.getElementById('course-delete-confirm').classList.add('hidden');
+      renderSelectedCourse();
+      lucide.createIcons();
+      window.scrollTo({top:0, behavior:'smooth'});
+    }
+
+    function closeCourseDetail(){
+      state.selectedCourseId=null;
+      document.getElementById('course-overview').classList.remove('hidden');
+      document.getElementById('course-detail').classList.add('hidden');
+    }
+
+    function renderSelectedCourse(){
+      const p=getProgress(state.selectedCourseId);
+      document.getElementById('detail-progress-percent').textContent=p.percent+'%';
+      document.getElementById('detail-progress-ring').style.setProperty('--progress',p.percent+'%');
+      const a=getCourseActions(state.selectedCourseId);
+      syncList('course-actions-list',a,createActionElement);
+      setEmpty('course-actions-empty',a.length===0);
+    }
+
+    function updateFormFields(){
+      const type=document.getElementById('entry-type').value;
+      document.getElementById('due-field').classList.toggle('hidden',type!=='task' && type!=='exam');
+      document.getElementById('parent-course-field').classList.toggle('hidden',type!=='task' && type!=='exam');
+      document.getElementById('custom-type-field').classList.toggle('hidden',type!=='task');
+      document.getElementById('budget-fields').classList.toggle('hidden',type!=='budget');
+      document.getElementById('course-fields').classList.toggle('hidden',type!=='course');
+      document.getElementById('description-field').classList.toggle('hidden',type==='budget');
+    }
+
+    function openCreateModal(){
+      state.editingRecord=null;
+      document.getElementById('entry-form').reset();
+      document.getElementById('entry-type').disabled=false;
+      const courseSelect=document.getElementById('entry-parent-course');
+      courseSelect.innerHTML='<option value="">Select a Course...</option>';
+      byType('course').forEach(c=>{
+        const opt=document.createElement('option');
+        opt.value=c.title;
+        opt.textContent=c.title||'Untitled Course';
+        courseSelect.appendChild(opt);
+      });
+      document.getElementById('modal').classList.remove('hidden');
+      document.getElementById('modal').classList.add('flex');
+      updateFormFields();
+    }
+
+    function openEditModal(item){
+      state.editingRecord=item;
+      document.getElementById('entry-type').value=item.type;
+      document.getElementById('entry-type').disabled=true;
+      document.getElementById('entry-title').value=item.title||'';
+      document.getElementById('entry-description').value=item.description||'';
+      document.getElementById('entry-due').value=item.due_date||'';
+      const courseSelect=document.getElementById('entry-parent-course');
+      courseSelect.innerHTML='<option value="">Select a Course...</option>';
+      byType('course').forEach(c=>{
+        const opt=document.createElement('option');
+        opt.value=c.title;
+        opt.textContent=c.title||'Untitled Course';
+        courseSelect.appendChild(opt);
+      });
+      document.getElementById('entry-parent-course').value=item.parent_course||'';
+      document.getElementById('entry-custom-type').value=item.time_slot||'';
+      document.getElementById('entry-instructor').value=item.instructor||'';
+      document.getElementById('entry-amount').value=item.amount||'';
+      document.getElementById('entry-category').value=item.category||'';
+      document.getElementById('modal').classList.remove('hidden');
+      document.getElementById('modal').classList.add('flex');
+      updateFormFields();
+    }
+
+    function closeModal(){
+      document.getElementById('modal').classList.add('hidden');
+      document.getElementById('modal').classList.remove('flex');
+      document.getElementById('entry-type').disabled=false;
+      document.getElementById('form-message').classList.add('hidden');
+    }
+
+    function openCreateActionModal(){
+      state.editingAction=null;
+      document.getElementById('action-form').reset();
+      document.getElementById('action-modal').classList.remove('hidden');
+      document.getElementById('action-modal').classList.add('flex');
+    }
+
+    function openEditActionModal(item){
+      state.editingAction=item;
+      document.getElementById('action-title').value=item.title||'';
+      document.getElementById('action-description').value=item.description||'';
+      document.getElementById('action-due').value=item.due_date||'';
+      document.getElementById('action-modal').classList.remove('hidden');
+      document.getElementById('action-modal').classList.add('flex');
+    }
+
+    function closeActionModal(){
+      document.getElementById('action-modal').classList.add('hidden');
+      document.getElementById('action-modal').classList.remove('flex');
+      document.getElementById('action-form-message').classList.add('hidden');
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Dynamic Greeting
+      const hour=new Date().getHours();
+      let greeting='Good evening.';
+      if(hour<12)greeting='Good morning.';
+      else if(hour<18)greeting='Good afternoon.';
+      const titleEl=document.querySelector('[data-template-id="page-title"]');
+      if(titleEl)titleEl.textContent=greeting;
+      document.getElementById('today-date').textContent=new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'});
+
+      // Pomodoro Logic
+      let timerInterval, timerRunning = false, timeLeft = 25 * 60;
+      const display = document.getElementById('timer-display');
+      const toggleBtn = document.getElementById('timer-toggle');
+      const toggleText = document.getElementById('toggle-text');
+      const timerIcon = document.getElementById('timer-icon');
+      const resetBtn = document.getElementById('timer-reset');
+      
+      function updateDisplay() {
+        const m = Math.floor(timeLeft / 60).toString().padStart(2, '0');
+        const s = (timeLeft % 60).toString().padStart(2, '0');
+        if (display) display.textContent = `${m}:${s}`;
+      }
+      
+      toggleBtn?.addEventListener('click', () => {
+        if (timerRunning) {
+          clearInterval(timerInterval);
+          toggleText.textContent = 'Start';
+          timerIcon.setAttribute('data-lucide', 'play');
+        } else {
+          timerInterval = setInterval(() => {
+            if (timeLeft > 0) { timeLeft--; updateDisplay(); }
+            else { clearInterval(timerInterval); timerRunning = false; toggleText.textContent = 'Start'; lucide.createIcons(); }
+          }, 1000);
+          toggleText.textContent = 'Pause';
+          timerIcon.setAttribute('data-lucide', 'pause');
+        }
+        timerRunning = !timerRunning;
+        lucide.createIcons();
+      });
+      
+      resetBtn?.addEventListener('click', () => {
+        clearInterval(timerInterval);
+        timerRunning = false;
+        const active = document.querySelector('.pomo-tab.active');
+        timeLeft = active ? parseInt(active.dataset.time) * 60 : 25 * 60;
+        updateDisplay();
+        toggleText.textContent = 'Start';
+        timerIcon.setAttribute('data-lucide', 'play');
+        lucide.createIcons();
+      });
+      
+      document.querySelectorAll('.pomo-tab').forEach(tab => {
+        tab.addEventListener('click', (e) => {
+          if (timerRunning) return;
+          document.querySelectorAll('.pomo-tab').forEach(t => t.className = 'pomo-tab px-4 md:px-6 py-2.5 rounded-[1.5rem] text-xs md:text-sm font-semibold text-[#8f8f89] hover:text-[#d7e0d0] flex-1 whitespace-nowrap transition-colors');
+          e.target.className = 'pomo-tab active px-4 md:px-6 py-2.5 rounded-[1.5rem] text-xs md:text-sm font-bold bg-[#d7e0d0] text-[#111] shadow-sm flex-1 whitespace-nowrap transition-colors';
+          timeLeft = parseInt(e.target.dataset.time) * 60;
+          updateDisplay();
+        });
+      });
+
+      // Events bindings
+      document.querySelectorAll('.nav-item').forEach(b=>b.addEventListener('click', ()=>setView(b.dataset.view)));
+      document.querySelectorAll('.tracker-tab').forEach(btn=>{
+        btn.addEventListener('click',()=>{
+          document.querySelectorAll('.tracker-tab').forEach(b=>{
+            b.classList.remove('active','text-[#d7e0d0]');
+            b.classList.add('text-[#8f8f89]');
+          });
+          btn.classList.add('active','text-[#d7e0d0]');
+          btn.classList.remove('text-[#8f8f89]');
+          const target=btn.dataset.tracker;
+          document.querySelector('[data-template-id="assignments-card"]').style.display=target==='assignments-card'?'block':'none';
+          document.querySelector('[data-template-id="exams-card"]').style.display=target==='exams-card'?'block':'none';
+        });
+      });
+      document.querySelector('[data-template-id="exams-card"]').style.display='none';
+      
+      document.getElementById('open-modal').onclick=openCreateModal;
+      document.getElementById('close-modal').onclick=closeModal;
+      document.getElementById('cancel-modal').onclick=closeModal;
+      document.getElementById('entry-type').onchange=updateFormFields;
+      document.getElementById('back-to-courses').onclick=closeCourseDetail;
+      document.getElementById('open-action-modal').onclick=openCreateActionModal;
+      document.getElementById('close-action-modal').onclick=closeActionModal;
+      document.getElementById('cancel-action-modal').onclick=closeActionModal;
+      
+      document.getElementById('course-menu-btn').onclick=()=>document.getElementById('course-menu').classList.toggle('hidden');
+      document.getElementById('course-edit-btn').onclick=()=>{
+        const c=byType('course').find(x=>x.__backendId===state.selectedCourseId);
+        document.getElementById('course-menu').classList.add('hidden');
+        if(c)openEditModal(c);
+      };
+      document.getElementById('course-delete-btn').onclick=()=>{
+        document.getElementById('course-menu').classList.add('hidden');
+        document.getElementById('course-delete-confirm').classList.remove('hidden');
+      };
+      document.getElementById('cancel-course-delete').onclick=()=>document.getElementById('course-delete-confirm').classList.add('hidden');
+      
+      document.getElementById('add-assignment-btn').onclick=()=>{
+        openCreateModal();
+        document.getElementById('entry-type').value='task';
+        document.getElementById('entry-type').disabled=true;
+        updateFormFields();
+      };
+      document.getElementById('add-exam-btn').onclick=()=>{
+        openCreateModal();
+        document.getElementById('entry-type').value='exam';
+        document.getElementById('entry-type').disabled=true;
+        updateFormFields();
+      };
+
+      document.getElementById('confirm-course-delete').onclick=async()=>{
+        const course=byType('course').find(x=>x.__backendId===state.selectedCourseId);
+        if(!course)return;
+        const btn=document.getElementById('confirm-course-delete');
+        btn.disabled=true; btn.textContent='Deleting...';
+        for(const a of getCourseActions(course.__backendId)){await mySdk.delete(a)}
+        const r=await mySdk.delete(course);
+        btn.disabled=false; btn.textContent='Delete';
+        if(r.isOk)closeCourseDetail(); else showInline(btn,'Could not delete');
+      };
+
+      document.getElementById('entry-form').onsubmit=async(e)=>{
+        e.preventDefault();
+        const msg=document.getElementById('form-message'),btn=document.getElementById('save-entry');
+        const type=document.getElementById('entry-type').value;
+        const title=document.getElementById('entry-title').value.trim();
+        if(!title){msg.textContent='Please enter a title.';msg.classList.remove('hidden');return}
+        msg.classList.add('hidden');
+        btn.disabled=true;
+        const original=btn.textContent;
+        btn.textContent='Saving...';
+
+        let dbType=type==='exam'?'task':type;
+        let dbCategory=type==='exam'?'exam':(type==='budget'?document.getElementById('entry-category').value.trim():'');
+
+        let result;
+        if(state.editingRecord){
+          const record=state.editingRecord;
+          record.type=dbType;
+          record.title=title;
+          record.description=type==='budget'?'':document.getElementById('entry-description').value.trim();
+          record.due_date=(type==='task'||type==='exam')?document.getElementById('entry-due').value:'';
+          record.amount=type==='budget'?(parseFloat(document.getElementById('entry-amount').value)||0):0;
+          record.instructor=type==='course'?document.getElementById('entry-instructor').value.trim():'';
+          record.parent_course=(type==='task'||type==='exam')?document.getElementById('entry-parent-course').value.trim():'';
+          record.time_slot=(type==='task')?document.getElementById('entry-custom-type').value.trim():'';
+          result=await mySdk.update(record);
+        }else{
+          result=await mySdk.create({
+            type:dbType,
+            title,
+            description:type==='budget'?'':document.getElementById('entry-description').value.trim(),
+            due_date:(type==='task'||type==='exam')?document.getElementById('entry-due').value:'',
+            completed:false,
+            amount:type==='budget'?(parseFloat(document.getElementById('entry-amount').value)||0):0,
+            category:dbCategory,
+            day:type==='task'?'Not Started':'',
+            time_slot:(type==='task')?document.getElementById('entry-custom-type').value.trim():'',
+            instructor:type==='course'?document.getElementById('entry-instructor').value.trim():'',
+            created_at:new Date().toISOString(),
+            parent_course:(type==='task'||type==='exam')?document.getElementById('entry-parent-course').value.trim():'',
+            cover_image_id: type==='course' ? COURSE_IMAGE_URLS[Math.floor(Math.random() * COURSE_IMAGE_URLS.length)] : ''
+          });
+        }
+
+        btn.disabled=false; btn.textContent=original;
+        if(result.isOk)closeModal(); else {msg.textContent='Could not save. Try again.';msg.classList.remove('hidden')}
+      };
+
+      document.getElementById('action-form').onsubmit=async(e)=>{
+        e.preventDefault();
+        const msg=document.getElementById('action-form-message'),btn=document.getElementById('save-action'),title=document.getElementById('action-title').value.trim();
+        if(!title){msg.textContent='Please enter an action title.';msg.classList.remove('hidden');return}
+        msg.classList.add('hidden');
+        btn.disabled=true;
+        const original=btn.textContent;
+        btn.textContent='Saving...';
+
+        let result;
+        if(state.editingAction){
+          const action=state.editingAction;
+          action.title=title;
+          action.description=document.getElementById('action-description').value.trim();
+          action.due_date=document.getElementById('action-due').value;
+          result=await mySdk.update(action);
+        }else{
+          result=await mySdk.create({
+            type:'course_action',
+            title,
+            description:document.getElementById('action-description').value.trim(),
+            due_date:document.getElementById('action-due').value,
+            completed:false,
+            amount:0,
+            category:'',
+            day:'',
+            time_slot:'',
+            instructor:'',
+            created_at:new Date().toISOString(),
+            parent_course:state.selectedCourseId
+          });
+        }
+
+        btn.disabled=false; btn.textContent=original;
+        if(result.isOk)closeActionModal(); else {msg.textContent='Could not save. Try again.';msg.classList.remove('hidden')}
+      };
+
+      lucide.createIcons();
+      await fetchRecords(); // Load data from Supabase on startup
+    });
+  </script>
+ </body>
 </html>
 
